@@ -1,0 +1,8 @@
+{
+  "common.appname": "Realtime Inputs",
+	"common.button.next": "Next",
+  "common.button.reset": "Reset",
+  "common.button.send": "Send",
+  "common.toast.header": "Result",
+  "dummy": "dummy"
+}

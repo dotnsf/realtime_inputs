@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<title><%= room %></title>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>
+<link href="//use.fontawesome.com/releases/v5.8.1/css/all.css" rel="stylesheet"/>
+<script src="/socket.io/socket.io.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+<link rel="shortcut icon" href="/icon.png" type="image/png"/>
+<link rel="icon" href="/icon.png" type="image/png"/>
+<link rel="apple-touch-icon" href="/icon.png"/>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="Realtime Inputs"/>
+
+<!-- // OGP tags -->
+<meta property="og:title" content="Realtime Inputs"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://realtime-inputs.mybluemix.net/"/>
+<meta property="og:image" content="https://realtime-inputs.mybluemix.net/icon.png"/>
+<meta property="og:site_name" content="Realtime Inputs"/>
+<meta property="og:description" content="Realtime Inputs : リアルタイム入力共有サービス"/>
+<!-- OGP tags // -->
+
+<!-- // Twitter Card -->
+<meta property="twitter:card" content="summary"/>
+<meta property="twitter:site" content="@dotnsf"/>
+<meta property="twitter:creator" content="@dotnsf"/>
+<meta property="twitter:url" content="https://realtime-inputs.mybluemix.net/"/>
+<meta property="twitter:image" content="https://realtime-inputs.mybluemix.net/icon.png"/>
+<meta property="twitter:title" content="Realtime Inputs"/>
+<meta property="twitter:description" content="Realtime Inputs : リアルタイム入力共有サービス"/>
+<!-- Twitter Card // -->
+
+<style type="text/css">
+html, body{
+  text-align: center;
+  background-color: #fafafa;
+  font-size: 20px;
+  color: #333;
+}
+</style>
+</head>
+<body>
+<h3 id="name"><%= name %></h3>
+
+<div class="container" id="subject">
+</div>
+
+<div class="container">
+<textarea id="msg" class="form-control"></textarea>
+</div>
+
+<div id="canvas_div">
+  <!--
+  <input type="button" class="btn btn-xs btn-warning" id="reset_btn" value="<%= __('common.button.reset') %>" onClick="reset();"/>
+-->
+  <input type="button" class="btn btn-xs btn-primary" id="send_btn" value="<%= __('common.button.send') %>" onClick="finish();"/>
+</div>
+
+<div aria-live="polite" aria-atomic="true" class="d-flex justify-content-center align-items-center">
+  <div class="toast center" role="alert" alia-live="assertive" alia-atomic="true" data-delay="3000" id="toast-box">
+  	<div class="toast-header" id="toast-header">
+      <%= __('common.toast.header') %>
+  	</div>
+  	<div class="toast-body" id="toast-body">
+  	</div>
+  </div>
+</div>
+
+<script>
+var uuid = generateUUID();
+var socketio = null;
+
+//. 参考: https://gist.github.com/Cartman0/436459b9b85cfdd1ca9c
+$(function(){
+  //. ヒストリバック無効化
+  if( window.history && window.history.pushState ){
+    history.pushState( "nohb", null, null );
+    $(window).on( "popState", function( evt ){
+      if( !event.originalEvent.state ){
+        history.pushState( "nohb", null, null );
+        return;
+      }
+    });
+  }
+
+  socketio = io.connect();
+
+  init();
+});
+
+function init(){
+  //. リサイズ時に Canvas サイズを変更する
+  $(window).on( 'load resize', function(){
+    resized();
+  });
+
+  //. スクロール禁止
+  /*
+  $(window).on('touchmove.noScroll', function( e ){
+    e.preventDefault();
+  });
+  */
+  var movefun = function( event ){
+    event.preventDefault();
+  }
+  window.addEventListener( 'touchmove', movefun, { passive: false } );
+
+  $('#msg').keyup( function(){
+    send();
+  });
+}
+
+function resized(){
+  //. 初期化を通知
+  var name = $('#name').text();
+  var msg = {
+    uuid: uuid,
+    room: '<%= room %>',
+    name: name
+  };
+  socketio.json.emit( 'init_client', msg );
+
+  socketio.on( 'broadcast', function(m){
+    //console.log( m );
+    if( m.type ){
+      switch( m.type ){
+      case 'reset':
+        reset();
+        $('#reset_btn').prop( 'disabled', false );
+        $('#send_btn').prop( 'disabled', false );
+        break;
+      case 'countdown':
+        $('#subject').html( m.sec );
+        break;
+      case 'subject':
+        reset();
+        $('#reset_btn').prop( 'disabled', false );
+        $('#send_btn').prop( 'disabled', false );
+
+        $('#subject').html( m.subject );
+        break;
+      case 'emit':
+        //console.log( 'emit: uuid = ' + uuid );
+        //console.log( m );
+        if( m.socket_id && m.socket_id == uuid ){
+          //. emit が自分宛てだった場合
+          var toast_msg = '第' + m.rank + '位でした！';
+          toast_msg += '<br/>要した時間は ' + m.game_sec + ' 秒でした。';
+
+		      //. toast
+      		$('#toast-header').html( '結果' );
+      		$('#toast-body').html( toast_msg );
+      		$('#toast-box').toast( 'show' );
+        }else{
+          //. emit が自分宛てではなかった場合
+        }
+        break;
+      }
+    }
+  });
+
+  //. 結果の個別通知（ここにメッセージが来ない・・）
+  socketio.on( 'notify', function(m){
+    console.log( m );
+  });
+}
+
+function reset(){
+  $('#msg').val('');
+  $('#msg').attr( 'readonly', false );
+  resized();
+}
+
+function finish(){
+  var msg = $('#msg').val();
+  $('#msg').attr( 'readonly', true );
+  $('#reset_btn').prop( 'disabled', true );
+  $('#send_btn').prop( 'disabled', true );
+
+  //. 通知
+  var message = {
+    uuid: uuid,
+    room: '<%= room %>',
+    status: 'fixed',
+    msg: msg
+  };
+  socketio.json.emit( 'msg_client', message );
+}
+
+function generateUUID(){
+  //. Cookie の値を調べて、有効ならその値で、空だった場合は生成する
+  var did = null;
+  cookies = document.cookie.split(";");
+  for( var i = 0; i < cookies.length; i ++ ){
+    var str = cookies[i].split("=");
+    if( unescape( str[0] ) == " deviceid" ){
+      did = unescape( unescape( str[1] ) );
+    }
+  }
+
+  if( did == null ){
+    var s = 1000;
+    did = ( new Date().getTime().toString(16) ) + Math.floor( s * Math.random() ).toString(16);
+    document.cookie = ( "deviceid=" + did );
+  }
+
+  return did;
+}
+
+function send(){
+  //. メッセージ
+  var msg = $('#msg').val();
+  //console.log( 'send() : ' + msg );
+
+  //. 通知
+  var message = {
+    uuid: uuid,
+    room: '<%= room %>',
+    status: 'blank',
+    msg: msg
+  };
+  socketio.json.emit( 'msg_client', message );
+}
+</script>
+</body>
+</html>

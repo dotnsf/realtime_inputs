@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<title><%= room %> - View</title>
+<script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/qrcode.min.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+<link rel="shortcut icon" href="/icon.png" type="image/png"/>
+<link rel="icon" href="/icon.png" type="image/png"/>
+<link rel="apple-touch-icon" href="/icon.png"/>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="Realtime Inputs"/>
+
+<!-- // OGP tags -->
+<meta property="og:title" content="Realtime Inputs"/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://realtime-inputs.mybluemix.net/"/>
+<meta property="og:image" content="https://realtime-inputs.mybluemix.net/icon.png"/>
+<meta property="og:site_name" content="Realtime Inputs"/>
+<meta property="og:description" content="Realtime Inputs : リアルタイム入力共有サービス"/>
+<!-- OGP tags // -->
+
+<!-- // Twitter Card -->
+<meta property="twitter:card" content="summary"/>
+<meta property="twitter:site" content="@dotnsf"/>
+<meta property="twitter:creator" content="@dotnsf"/>
+<meta property="twitter:url" content="https://realtime-inputs.mybluemix.net/"/>
+<meta property="twitter:image" content="https://realtime-inputs.mybluemix.net/icon.png"/>
+<meta property="twitter:title" content="Realtime Inputs"/>
+<meta property="twitter:description" content="Realtime Inputs : リアルタイム入力共有サービス"/>
+<!-- Twitter Card // -->
+
+<style type="text/css">
+html, body{
+  text-align: center;
+  background-color: #fafafa;
+  font-size: 20px;
+  color: #333;
+}
+.card-columns{
+  @include media-breakpoint-only(xl){
+    column-count: 5;
+  }
+  @include media-breakpoint-only(lg){
+    column-count: 4;
+  }
+  @include media-breakpoint-only(md){
+    column-count: 3;
+  }
+}
+.card-group .card{
+  /*max-width: 20%;*/
+  /*max-width: 16%;*/
+  max-width: calc(100% /<%= columns %>);
+}
+.card[status='blank']{
+  background-color: #fff;
+}
+.card[status='error']{
+  background-color: #ccf;
+}
+.card[status='ok']{
+  background-color: #cfc;
+}
+.card[status='fixed']{
+  background-color: #ffc;
+}
+.card{
+  position: relative;
+}
+.card .card-badge{
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  padding: 5px;
+  color: blue;
+  transform: rotate(20deg);
+}
+</style>
+</head>
+<body>
+<div>
+<button class="btn btn-primary" id="subject" onClick="next();"><%= __('common.button.next') %></button>
+</div>
+<canvas id="qrcode"></canvas>
+
+<div id="card-groups">
+  <div class="card-group" id="cards-1">
+  </div>
+</div>
+
+<script>
+var socketio = null;
+var socket_ids = [];
+
+var base_url = location.origin + '/';
+
+var row = 1;
+var cnt = 0;
+
+var game_ts = 0;
+var rank = 0;
+
+var subjects = [
+  '今日はいい天気ですね',
+  '君は何を今見つめているの',
+  '隣の柿はよく客食う柿だ'
+];
+
+$(function(){
+  socketio = io.connect();
+
+  init();
+
+  QRCode.toCanvas( document.getElementById( 'qrcode' ), base_url + '?room=<%= room %>', function( err ){
+    if( err ){ console.log( err ); }
+  });
+
+  socketio.on( 'init_client_view', function( msg ){
+    var socket_id = msg.uuid; //msg.socket_id;
+    if( socket_ids.indexOf( socket_id ) > -1 ){
+    }else{
+      socket_ids.push( socket_id );
+
+      var color = generateColor( msg.name );
+
+      cnt ++;
+      if( cnt > 1 && cnt % 5 == 1 ){
+        row ++;
+        $('#card-groups').append( '<div class="card-group" id="cards-' + row + '">' );
+      }
+
+      var card = '<div id="card_' + socket_id + '" class="card border-' + color + '" status="blank">'
+        + '<div id="card_body_' + socket_id + '" class="card-body text-' + color + '">'
+        + '<h4 class="card-title"><a href="#" class="btn btn-xs btn-' + color + '" onClick="removeCard(\'card_' + socket_id + '\');">&times;</a>' + msg.name + '</h4>'
+        + '</div>'
+        + '<div class="card-bottom" id="msg_' + socket_id + '" width="315" height="330"></div>'
+        + '<div class="card-badge" id="card_badge_' + socket_id + '"></div>'
+        + '</div>';
+      $('#cards-'+row).append( card );
+    }
+  });
+
+  socketio.on( 'msg_client_view', function( msg ){
+    //console.log( msg );
+    var socket_id = msg.uuid; //msg.socket_id;
+    if( socket_ids.indexOf( socket_id ) > -1 ){
+      var subject = $('#subject').text();
+      var status = msg.status;
+      if( status != 'fixed' ){
+        $('#msg_'+socket_id).html( msg.msg );
+        $('#card_'+socket_id).attr( 'status', '' + msg.status );
+        if( msg.msg ){
+          //. お題の途中までは合っている？
+          if( subject.startsWith( msg.msg ) ){
+            $('#card_'+socket_id).attr( 'status', 'ok' );
+          }else{
+            $('#card_'+socket_id).attr( 'status', 'error' );
+          }
+        }
+      }else{
+        //. 正解／不正解チェック
+        var text = $('#msg_'+socket_id).text();
+        if( text == subject ){
+          $('#card_'+socket_id).attr( 'status', 'ok' );
+          rank ++;
+          var ts = ( new Date() ).getTime();
+          var game_sec = ( ts - game_ts ) / 1000;
+          $('#card_badge_'+socket_id).html( rank );
+          $('#card_badge_'+socket_id).prop( 'title', game_sec + 's' );
+
+          //. 通知
+          notify( socket_id, rank, game_sec );
+        }else{
+          $('#card_'+socket_id).attr( 'status', 'error' );
+        }
+      }
+    }
+  });
+});
+
+function reset(){
+  $('.card').attr( 'status', 'blank' );
+  $('.card-bottom').html( '' );
+  $('.card-badge').html( '' );
+  $('.card-badge').prop( 'title', '' );
+  $.ajax({
+    url: '/broadcast',
+    type: 'POST',
+    data: { type: 'reset', room: '<%= room %>' },
+    success: function( result ){
+      console.log( result );
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e1 + ' : ' + e2 );
+    }
+  });
+}
+
+function notify( socket_id, rank, game_sec ){
+  console.log( 'notify: socket_id = ' + socket_id + ', rank = ' + rank + ', game_sec = ' + game_sec );
+  $.ajax({
+    url: '/emit/' + socket_id,
+    type: 'POST',
+    data: { type: 'emit', room: '<%= room %>', rank: rank, game_sec: game_sec },
+    success: function( result ){
+      console.log( result );
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e1 + ' : ' + e2 );
+    }
+  });
+}
+
+function init(){
+  //. リサイズ時
+  //$(window).on( 'load resize', function(){
+    resized();
+  //});
+}
+
+function next(){
+  rank = 0;
+  $('.card').attr( 'status', 'blank' );
+  $('.card-bottom').html( '' );
+  $('.card-badge').html( '' );
+  $('.card-badge').prop( 'title', '' );
+
+  var idx = Math.floor( Math.random() * subjects.length );
+  var subject = subjects[idx];
+  $('#subject').html( subject );
+
+  //. countdown
+  var sec = 3;
+  countdown( sec, subject );
+}
+
+function countdown( sec, subject ){
+  var message = { room: '<%= room %>', type: 'countdown', sec: sec };
+  game_ts = ( new Date() ).getTime();
+  if( sec == 0 ){
+    message.type = 'subject';
+    message.subject = subject;
+    message.ts = game_ts;
+  }
+
+  $.ajax({
+    url: '/broadcast',
+    type: 'POST',
+    data: message,
+    success: function( result ){
+      //console.log( result );
+      sec --;
+      if( sec >= 0 ){
+        setTimeout( function(){
+          countdown( sec, subject );
+        }, 1000 );
+      }
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e1 + ' : ' + e2 );
+    }
+  });
+}
+
+function resized(){
+  var browserWidth = window.innerWidth;
+  var browserHeight = window.innerHeight;
+
+  socketio.emit( 'init_view', { room: '<%= room %>', width: browserWidth, height: browserHeight } );
+}
+
+function generateColor( name ){
+  var arr = [ 'primary', 'secondary', 'success', 'danger', 'warning', 'info', /*'light',*/ 'dark' ];
+  var r = 0;
+  for( var i = 0; i < name.length; i ++ ){
+    var c = name.charCodeAt( i );
+    r += c;
+  }
+  r = r % arr.length;
+
+  return arr[r];
+}
+
+function removeCard( card_id ){
+  $('#'+card_id).css( 'display', 'none' );
+}
+</script>
+</body>
+</html>
