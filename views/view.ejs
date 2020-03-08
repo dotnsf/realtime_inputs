@@ -133,9 +133,10 @@ $(function(){
       var color = generateColor( msg.name );
 
       cnt ++;
+      //. card-group を複数段にする場合
       if( cnt > 1 && cnt % 5 == 1 ){
-        row ++;
-        $('#card-groups').append( '<div class="card-group" id="cards-' + row + '">' );
+        //row ++;
+        //$('#card-groups').append( '<div class="card-group" id="cards-' + row + '">' );
       }
 
       var card = '<div id="card_' + socket_id + '" class="card border-' + color + '" status="blank">'
@@ -171,6 +172,7 @@ $(function(){
         var text = $('#msg_'+socket_id).text();
         if( text == subject ){
           $('#card_'+socket_id).attr( 'status', 'ok' );
+          $('#card_'+socket_id).addClass( 'order-' + rank );
           rank ++;
           var ts = ( new Date() ).getTime();
           var game_sec = ( ts - game_ts ) / 1000;
@@ -228,6 +230,9 @@ function init(){
 }
 
 function next(){
+  for( var i = 0; i < rank; i ++ ){
+    $('.card').removeClass( 'order-' + i );
+  }
   rank = 0;
   $('.card').attr( 'status', 'blank' );
   $('.card-bottom').html( '' );

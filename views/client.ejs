@@ -113,7 +113,12 @@ function init(){
   }
   window.addEventListener( 'touchmove', movefun, { passive: false } );
 
+  /* keyup だとスマホに未対応
   $('#msg').keyup( function(){
+    send();
+  });
+  */
+  $('#msg').on( 'input', function( e ){
     send();
   });
 }
