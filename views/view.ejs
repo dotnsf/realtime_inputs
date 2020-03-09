@@ -139,7 +139,7 @@ $(function(){
         //$('#card-groups').append( '<div class="card-group" id="cards-' + row + '">' );
       }
 
-      var card = '<div id="card_' + socket_id + '" class="card border-' + color + '" status="blank">'
+      var card = '<div id="card_' + socket_id + '" class="card order-12 border-' + color + '" status="blank">'
         + '<div id="card_body_' + socket_id + '" class="card-body text-' + color + '">'
         + '<h4 class="card-title"><a href="#" class="btn btn-xs btn-' + color + '" onClick="removeCard(\'card_' + socket_id + '\');">&times;</a>' + msg.name + '</h4>'
         + '</div>'
@@ -172,6 +172,7 @@ $(function(){
         var text = $('#msg_'+socket_id).text();
         if( text == subject ){
           $('#card_'+socket_id).attr( 'status', 'ok' );
+          $('#card_'+socket_id).removeClass( 'order-12' );
           $('#card_'+socket_id).addClass( 'order-' + rank );
           rank ++;
           var ts = ( new Date() ).getTime();
@@ -233,6 +234,7 @@ function next(){
   for( var i = 0; i < rank; i ++ ){
     $('.card').removeClass( 'order-' + i );
   }
+  $('.card').addClass( 'order-12' );
   rank = 0;
   $('.card').attr( 'status', 'blank' );
   $('.card-bottom').html( '' );
