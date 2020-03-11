@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8"/>
-<title><%= room %> - View</title>
+<title>View - room: <%= room %></title>
 <script type="text/javascript" src="//code.jquery.com/jquery-2.2.4.min.js"></script>
 <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
@@ -111,7 +111,11 @@ var rank = 0;
 
 var subjects = [
   '今日はいい天気ですね',
+  '赤コロナ青コロナ黄コロナ',
   '君は何を今見つめているの',
+  '卒業だけが理由でしょうか',
+  '制服の胸のボタンを下級生たちにねだられ',
+  '砂丘のかなたつむじ風が吹き荒れるよ',
   '隣の柿はよく客食う柿だ'
 ];
 
@@ -140,10 +144,10 @@ $(function(){
       }
 
       var card = '<div id="card_' + socket_id + '" class="card order-12 border-' + color + '" status="blank">'
-        + '<div id="card_body_' + socket_id + '" class="card-body text-' + color + '">'
+        + '<div id="card_body_' + socket_id + '" class="card-header text-' + color + '">'
         + '<h4 class="card-title"><a href="#" class="btn btn-xs btn-' + color + '" onClick="removeCard(\'card_' + socket_id + '\');">&times;</a>' + msg.name + '</h4>'
         + '</div>'
-        + '<div class="card-bottom" id="msg_' + socket_id + '" width="315" height="330"></div>'
+        + '<div class="card-body" id="msg_' + socket_id + '" width="315" height="330"></div>'
         + '<div class="card-badge" id="card_badge_' + socket_id + '"></div>'
         + '</div>';
       $('#cards-'+row).append( card );
@@ -192,7 +196,7 @@ $(function(){
 
 function reset(){
   $('.card').attr( 'status', 'blank' );
-  $('.card-bottom').html( '' );
+  $('.card-body').html( '' );
   $('.card-badge').html( '' );
   $('.card-badge').prop( 'title', '' );
   $.ajax({
@@ -237,7 +241,7 @@ function next(){
   $('.card').addClass( 'order-12' );
   rank = 0;
   $('.card').attr( 'status', 'blank' );
-  $('.card-bottom').html( '' );
+  $('.card-body').html( '' );
   $('.card-badge').html( '' );
   $('.card-badge').prop( 'title', '' );
 
