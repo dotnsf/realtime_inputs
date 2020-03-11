@@ -47,7 +47,7 @@ app.get( '/client', function( req, res ){
 
 app.get( '/view', function( req, res ){
   var room = req.query.room;
-  if( !room ){ room = settings.defaultroom; }
+  if( !room ){ room = ''; /*settings.defaultroom;*/ }
   var columns = req.query.columns;
   if( columns ){
     columns = parseInt( columns );
